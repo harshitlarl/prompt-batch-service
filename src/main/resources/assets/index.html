@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Submit Batch · Prompt Batch Service</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Prompt Batch Service</div>
+    <nav>
+      <a href="index.html" class="active">Submit</a>
+      <a href="status.html">Task Status</a>
+      <a href="/swagger" target="_blank" rel="noopener">API Docs</a>
+    </nav>
+  </div>
+
+  <main>
+    <div class="hero">
+      <h1>Submit a Prompt Batch</h1>
+      <p>Paste prompts (one per line) or a JSON array, hit submit, and track it live on the Task Status page.</p>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" data-mode="text" type="button">Plain text (one per line)</button>
+        <button class="tab-btn" data-mode="json" type="button">JSON array</button>
+        <button class="tab-btn" data-mode="file" type="button">Upload file</button>
+      </div>
+
+      <form id="submit-form">
+        <div id="mode-text">
+          <label for="prompts-text">Prompts — one per line</label>
+          <textarea id="prompts-text" placeholder="Summarize the plot of Hamlet
+Translate 'good morning' to French
+Write a haiku about the ocean"></textarea>
+          <div class="hint">Blank lines are ignored. Each line becomes one prompt.</div>
+        </div>
+
+        <div id="mode-json" style="display:none;">
+          <label for="prompts-json">Prompts — JSON array of strings</label>
+          <textarea id="prompts-json" placeholder='["hello", "world", "foo", "bar"]'></textarea>
+          <div class="hint">Must be a valid JSON array, e.g. <code>["prompt one", "prompt two"]</code></div>
+        </div>
+
+        <div id="mode-file" style="display:none;">
+          <label>Upload a file (one prompt per line, or a <code>.json</code> array)</label>
+          <div class="file-drop" id="file-drop">
+            <input type="file" id="file-input" accept=".txt,.json,text/plain,application/json" />
+            <div id="file-drop-label">Click to choose a file, or drag one here</div>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:20px;">
+          <button type="submit" class="primary" id="submit-btn">Submit Batch</button>
+          <span class="spacer"></span>
+          <span class="hint" id="prompt-count">0 prompts</span>
+        </div>
+
+        <div class="banner" id="banner"></div>
+      </form>
+    </div>
+
+    <div class="card result-panel" id="result-card" style="display:none;">
+      <div class="result-head">
+        <div>
+          <strong>Batch <span class="mono copy-id" id="result-id" title="Click to copy"></span></strong>
+        </div>
+        <span id="result-badge"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="result-fill" style="width:0%"></div></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">Total</div></div>
+        <div class="stat"><div class="num" id="stat-completed">0</div><div class="lbl">Completed</div></div>
+        <div class="stat"><div class="num" id="stat-succeeded">0</div><div class="lbl">Succeeded</div></div>
+        <div class="stat"><div class="num" id="stat-failed">0</div><div class="lbl">Failed</div></div>
+      </div>
+      <div class="row" style="margin-top:16px;">
+        <a href="status.html" class="link">View all tasks on the Task Status page &rarr;</a>
+        <span class="spacer"></span>
+        <button class="secondary" id="submit-another">Submit another</button>
+      </div>
+    </div>
+
+    <div class="footer-note">Talking to <span id="api-base"></span></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="submit.js"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Task Status · Prompt Batch Service</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Prompt Batch Service</div>
+    <nav>
+      <a href="index.html">Submit</a>
+      <a href="status.html" class="active">Task Status</a>
+      <a href="/swagger" target="_blank" rel="noopener">API Docs</a>
+    </nav>
+  </div>
+
+  <main>
+    <div class="row between" style="margin-bottom:20px;">
+      <div>
+        <h1 style="margin:0 0 4px;">Task Status</h1>
+        <p class="hint" style="margin:0;">All submitted batches and their live progress.</p>
+      </div>
+      <a href="index.html"><button class="primary" type="button">+ Submit New Batch</button></a>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <select id="filter-status">
+          <option value="ALL">All statuses</option>
+          <option value="QUEUED">Queued</option>
+          <option value="PROCESSING">Processing</option>
+          <option value="COMPLETED">Completed</option>
+          <option value="FAILED">Failed</option>
+        </select>
+        <input type="text" id="filter-search" placeholder="Search batch id…" style="max-width:260px;" />
+        <span class="spacer"></span>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;font-weight:600;color:var(--muted);">
+          <input type="checkbox" id="auto-refresh" checked /> Auto-refresh
+        </label>
+        <button class="secondary" id="refresh-btn" type="button">Refresh now</button>
+        <span id="live-indicator" class="hint"><span class="pulse"></span> live</span>
+      </div>
+
+      <div id="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Batch ID</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Total</th>
+              <th>Succeeded</th>
+              <th>Failed</th>
+              <th>Created</th>
+              <th>Finished</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none;">
+          <div class="big">&#128237;</div>
+          <div>No batches yet.</div>
+          <div class="hint" style="margin-top:6px;">
+            <a href="index.html" class="link">Submit your first batch &rarr;</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note" id="summary-note"></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="status.js"></script>
+</body>
+</html>

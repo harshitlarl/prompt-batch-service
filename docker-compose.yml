@@ -1,0 +1,15 @@
+services:
+  prompt-batch-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prompt-batch-service:local
+    container_name: prompt-batch-service
+    environment:
+      # Selects config/config-${APP_ENV}.yml (local | stage | prod). Override with
+      # `APP_ENV=stage docker compose up --build` or in a .env file.
+      APP_ENV: ${APP_ENV:-local}
+    ports:
+      - "8080:8080"   # application port (REST API)
+      - "8081:8081"   # admin port (health checks, metrics)
+    restart: unless-stopped

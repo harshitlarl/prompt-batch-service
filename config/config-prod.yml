@@ -1,0 +1,52 @@
+serviceName: prompt-batch-service
+
+server:
+  applicationConnectors:
+    - type: http
+      port: ${APP_PORT:-8080}
+  adminConnectors:
+    - type: http
+      port: ${ADMIN_PORT:-8081}
+
+logging:
+  level: ${LOG_LEVEL:-WARN}
+  loggers:
+    com.example.promptbatch: INFO
+
+# Pushes every registered metric (inference latency/success/rate-limit, task-executor
+# throughput/backlog, batch counts, JVM stats) to the "metrics" logger every minute. Point a log
+# shipper (Fluentd/Filebeat/CloudWatch agent) at this logger, or swap in a `graphite`/`datadog`
+# reporter here, to feed a real dashboard - no code change needed (LLD.md §9.7).
+metrics:
+  frequency: 1 minute
+  reporters:
+    - type: log
+      logger: metrics
+      frequency: 1 minute
+
+workerPool:
+  size: ${WORKER_POOL_SIZE:-32}
+  queueCapacity: ${WORKER_POOL_QUEUE_CAPACITY:-50000}
+
+retry:
+  maxRetries: 6
+  baseDelayMs: 500
+  maxDelayMs: 15000
+  jitter: true
+
+mockEndpoint:
+  rateLimitProbability: 0.3
+  baseLatencyMs: 150
+
+# Prod always persists to disk (a mounted volume) so batches survive restarts/crashes.
+store:
+  type: ${STORE_TYPE:-sqlite}
+  directory: ${STORE_DIRECTORY:-/data/prompt-batch-service/batches}
+  path: ${STORE_SQLITE_PATH:-/data/prompt-batch-service/batches.db}
+
+swagger:
+  resourcePackage: com.example.promptbatch.api
+  title: prompt-batch-service API
+  description: Submit batches of AI prompts, track live progress, and fetch aggregated results.
+  version: 1.0.0
+  schemes: [https]

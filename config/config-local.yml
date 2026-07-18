@@ -1,0 +1,55 @@
+serviceName: prompt-batch-service
+
+server:
+  applicationConnectors:
+    - type: http
+      port: ${APP_PORT:-8080}
+  adminConnectors:
+    - type: http
+      port: ${ADMIN_PORT:-8081}
+
+logging:
+  level: ${LOG_LEVEL:-INFO}
+  loggers:
+    com.example.promptbatch: DEBUG
+
+# Every Timer/Meter/Counter/Gauge registered in code (client/MeteredInferenceClient,
+# worker/MeteredTaskExecutor, the composition root's gauges, plus Dropwizard's built-in JVM
+# metrics) is pushed out via these reporters - no separate scrape/agent setup needed.
+# - log: periodically dumps every metric to the "metrics" logger, so it's visible right in the
+#   console during local development.
+# Swapping/adding a `graphite`/`influx-db`/`datadog` reporter here (or the JMX reporter, once
+# `io.dropwizard.metrics:metrics-jmx` is on the classpath) is config-only - no code change - by
+# the same "swap the implementation behind the seam" principle as everything else (LLD.md §9.7).
+metrics:
+  frequency: 30 seconds
+  reporters:
+    - type: log
+      logger: metrics
+      frequency: 30 seconds
+
+workerPool:
+  size: ${WORKER_POOL_SIZE:-8}
+  queueCapacity: ${WORKER_POOL_QUEUE_CAPACITY:-10000}
+
+retry:
+  maxRetries: 4
+  baseDelayMs: 500
+  maxDelayMs: 5000
+  jitter: true
+
+mockEndpoint:
+  rateLimitProbability: 0.3
+  baseLatencyMs: 150
+
+store:
+  type: ${STORE_TYPE:-sqlite}
+  directory: ${STORE_DIRECTORY:-./data/batches}
+  path: ${STORE_SQLITE_PATH:-./data/batches.db}
+
+swagger:
+  resourcePackage: com.example.promptbatch.api
+  title: prompt-batch-service API
+  description: Submit batches of AI prompts, track live progress, and fetch aggregated results.
+  version: 1.0.0
+  schemes: [http]
