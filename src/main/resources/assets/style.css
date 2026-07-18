@@ -17,12 +17,58 @@
   box-sizing: border-box;
 }
 
+@keyframes bgDrift {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 15% 10%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: calc(200px + 100%) 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes softBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: radial-gradient(1200px 600px at 10% -10%, #1b2438 0%, var(--bg) 55%);
+  background-size: 140% 140%;
   color: var(--text);
   min-height: 100vh;
+  animation: bgDrift 22s ease-in-out infinite;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+body.ready {
+  opacity: 1;
 }
 
 .topbar {
@@ -36,6 +82,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  animation: fadeInUp 0.5s ease both;
 }
 
 .brand {
@@ -53,6 +100,7 @@ body {
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 12px var(--accent);
+  animation: pulse 2.2s infinite;
 }
 
 nav {
@@ -61,23 +109,26 @@ nav {
 }
 
 nav a {
+  position: relative;
   color: var(--muted);
   text-decoration: none;
   padding: 8px 14px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  transition: all 0.15s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
 
 nav a:hover {
   color: var(--text);
   background: var(--panel-2);
+  transform: translateY(-1px);
 }
 
 nav a.active {
   color: #fff;
   background: var(--accent);
+  box-shadow: 0 4px 14px -4px rgba(91, 140, 255, 0.7);
 }
 
 main {
@@ -89,11 +140,15 @@ main {
 .hero {
   text-align: center;
   margin-bottom: 28px;
+  animation: fadeInUp 0.55s ease 0.05s both;
 }
 
 .hero h1 {
   font-size: 30px;
   margin: 0 0 8px;
+  background: linear-gradient(90deg, var(--text), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .hero p {
@@ -108,6 +163,13 @@ main {
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.6);
+  animation: fadeInUp 0.5s ease 0.1s both;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+}
+
+.card:hover {
+  border-color: #394363;
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, 0.7);
 }
 
 .card + .card {
@@ -134,11 +196,25 @@ main {
   cursor: pointer;
   font-weight: 600;
   font-size: 13.5px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.12s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn:active {
+  transform: scale(0.96);
 }
 
 .tab-btn.active {
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 4px 14px -4px rgba(91, 140, 255, 0.7);
+}
+
+#mode-text, #mode-json, #mode-file {
+  animation: fadeIn 0.25s ease both;
 }
 
 label {
@@ -194,6 +270,8 @@ textarea:focus, input[type="text"]:focus {
 }
 
 button.primary {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(180deg, var(--accent-2), var(--accent));
   color: #fff;
   border: none;
@@ -203,7 +281,7 @@ button.primary {
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 8px 20px -8px rgba(91, 140, 255, 0.6);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 button.primary:hover {
@@ -211,10 +289,26 @@ button.primary:hover {
   box-shadow: 0 10px 24px -8px rgba(91, 140, 255, 0.75);
 }
 
+button.primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
 button.primary:disabled {
-  opacity: 0.55;
+  opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: -2px;
+  animation: spin 0.7s linear infinite;
 }
 
 button.secondary {
@@ -226,10 +320,16 @@ button.secondary {
   font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
 }
 
 button.secondary:hover {
   border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+button.secondary:active {
+  transform: translateY(0) scale(0.97);
 }
 
 button.icon-btn {
@@ -240,11 +340,17 @@ button.icon-btn {
   padding: 6px 10px;
   font-size: 12.5px;
   cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 button.icon-btn:hover {
   color: var(--text);
   border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+button.icon-btn:active {
+  transform: translateY(0) scale(0.95);
 }
 
 .file-drop {
@@ -254,12 +360,18 @@ button.icon-btn:hover {
   text-align: center;
   color: var(--muted);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
 }
 
-.file-drop:hover, .file-drop.drag {
+.file-drop:hover {
   border-color: var(--accent);
   background: rgba(91, 140, 255, 0.06);
+}
+
+.file-drop.drag {
+  border-color: var(--accent);
+  background: rgba(91, 140, 255, 0.1);
+  transform: scale(1.01);
 }
 
 .file-drop input {
@@ -273,10 +385,15 @@ button.icon-btn:hover {
   margin-top: 16px;
   display: none;
   border: 1px solid transparent;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .banner.show {
   display: block;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .banner.success {
@@ -299,6 +416,7 @@ button.icon-btn:hover {
 
 .result-panel {
   margin-top: 18px;
+  animation: popIn 0.3s ease both;
 }
 
 .result-head {
@@ -328,9 +446,14 @@ button.icon-btn:hover {
 }
 
 .badge.QUEUED { background: rgba(255, 180, 84, 0.15); color: var(--warn); }
-.badge.PROCESSING { background: rgba(91, 140, 255, 0.15); color: var(--accent-2); }
+.badge.PROCESSING { background: rgba(91, 140, 255, 0.15); color: var(--accent-2); animation: badgeGlow 1.6s ease-in-out infinite; }
 .badge.COMPLETED { background: rgba(53, 201, 143, 0.15); color: var(--success); }
 .badge.FAILED { background: rgba(255, 107, 107, 0.15); color: var(--danger); }
+
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(91, 140, 255, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(91, 140, 255, 0); }
+}
 
 .progress-bar {
   height: 10px;
@@ -345,7 +468,23 @@ button.icon-btn:hover {
   height: 100%;
   background: linear-gradient(90deg, var(--accent), var(--success));
   border-radius: 6px;
-  transition: width 0.3s ease;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 80%
+  );
+  background-size: 200px 100%;
+  animation: shimmer 1.8s linear infinite;
 }
 
 .stat-grid {
@@ -360,11 +499,29 @@ button.icon-btn:hover {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.stat:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
 }
 
 .stat .num {
   font-size: 20px;
   font-weight: 700;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.stat .num.bump {
+  animation: numBump 0.35s ease;
+}
+
+@keyframes numBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
 }
 
 .stat .lbl {
@@ -395,14 +552,23 @@ thead th {
   background: var(--panel);
 }
 
+tbody tr {
+  animation: fadeInUp 0.35s ease both;
+}
+
 tbody td {
   padding: 12px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  transition: background 0.15s ease;
 }
 
-tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mini-bar .fill {
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .mono {
@@ -431,11 +597,14 @@ tbody tr:hover {
   text-align: center;
   padding: 60px 20px;
   color: var(--muted);
+  animation: fadeIn 0.4s ease both;
 }
 
 .empty-state .big {
   font-size: 36px;
   margin-bottom: 10px;
+  display: inline-block;
+  animation: softBounce 2.4s ease-in-out infinite;
 }
 
 .toolbar {

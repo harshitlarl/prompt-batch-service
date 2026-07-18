@@ -20,9 +20,14 @@ function fmtPercent(p) {
   return (Math.round(p * 10) / 10).toFixed(1) + "%";
 }
 
-function fmtTime(iso) {
-  if (!iso) return "\u2014";
-  const d = new Date(iso);
+function fmtTime(value) {
+  if (value === null || value === undefined) return "\u2014";
+  // Jackson serializes java.time.Instant as epoch seconds (optionally fractional), not an
+  // ISO string, so a plain `new Date(value)` (which expects epoch millis or ISO text) would
+  // misparse it - convert seconds -> millis first.
+  const millis = typeof value === "number" ? value * 1000 : Date.parse(value);
+  const d = new Date(millis);
+  if (isNaN(d.getTime())) return "\u2014";
   return d.toLocaleString();
 }
 
@@ -48,3 +53,20 @@ async function copyToClipboard(text) {
     return false;
   }
 }
+
+// Bumps a stat number with a little scale animation whenever its value changes, so live
+// updates (polling/auto-refresh) feel alive rather than just silently swapping text.
+function setStatValue(el, value) {
+  if (!el) return;
+  const next = String(value);
+  if (el.textContent === next) return;
+  el.textContent = next;
+  el.classList.remove("bump");
+  // Force reflow so the animation replays even if it was just removed.
+  void el.offsetWidth;
+  el.classList.add("bump");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.body.classList.add("ready");
+});

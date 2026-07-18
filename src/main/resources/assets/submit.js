@@ -87,7 +87,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   hideBanner();
   submitBtn.disabled = true;
-  submitBtn.textContent = "Submitting\u2026";
+  submitBtn.innerHTML = '<span class="btn-spinner"></span>Submitting\u2026';
 
   try {
     let result;
@@ -156,6 +156,11 @@ document.getElementById("submit-another").addEventListener("click", () => {
 
 function showResultPanel(batchId) {
   const card = document.getElementById("result-card");
+  card.style.display = "none";
+  // Re-trigger the pop-in animation each time a new batch is submitted.
+  card.classList.remove("result-panel");
+  void card.offsetWidth;
+  card.classList.add("result-panel");
   card.style.display = "block";
   document.getElementById("result-id").textContent = batchId;
   document.getElementById("result-id").onclick = () => copyToClipboard(batchId);
@@ -166,10 +171,10 @@ function showResultPanel(batchId) {
     if (!ok || !body) return;
     document.getElementById("result-badge").innerHTML = statusBadge(body.status);
     document.getElementById("result-fill").style.width = body.percentComplete + "%";
-    document.getElementById("stat-total").textContent = body.total;
-    document.getElementById("stat-completed").textContent = body.completed;
-    document.getElementById("stat-succeeded").textContent = body.succeeded;
-    document.getElementById("stat-failed").textContent = body.failed;
+    setStatValue(document.getElementById("stat-total"), body.total);
+    setStatValue(document.getElementById("stat-completed"), body.completed);
+    setStatValue(document.getElementById("stat-succeeded"), body.succeeded);
+    setStatValue(document.getElementById("stat-failed"), body.failed);
     if (body.status === "COMPLETED" || body.status === "FAILED") {
       clearInterval(pollTimer);
     }

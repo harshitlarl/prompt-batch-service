@@ -33,10 +33,13 @@ function render(batches) {
   } else {
     emptyState.style.display = "none";
     tableBody.innerHTML = filtered
-      .map((b) => {
+      .map((b, i) => {
         const created = fmtTime(b.createdAt);
+        // Stagger each row's fade-in slightly so a fresh render reads as a cascade rather
+        // than everything popping in at once; capped so long lists don't feel sluggish.
+        const delay = Math.min(i, 12) * 25;
         return `
-        <tr>
+        <tr style="animation-delay:${delay}ms">
           <td><span class="mono copy-id" title="Click to copy" data-id="${escapeHtml(b.batchId)}">${escapeHtml(b.batchId)}</span></td>
           <td>${statusBadge(b.status)}</td>
           <td>
