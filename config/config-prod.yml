@@ -28,6 +28,20 @@ workerPool:
   size: ${WORKER_POOL_SIZE:-32}
   queueCapacity: ${WORKER_POOL_QUEUE_CAPACITY:-50000}
 
+# See config-local.yml for what this pool + sweep are for. Kept small and independent of
+# workerPool on purpose: however many instances are running (see .do/app.yaml
+# instance_count/autoscaling), a burst of retries after an outage never eats into capacity
+# reserved for fresh incoming requests.
+retryWorkerPool:
+  size: ${RETRY_WORKER_POOL_SIZE:-4}
+  queueCapacity: ${RETRY_WORKER_POOL_QUEUE_CAPACITY:-5000}
+
+recovery:
+  enabled: ${RECOVERY_ENABLED:-true}
+  intervalSeconds: ${RECOVERY_INTERVAL_SECONDS:-30}
+  staleAfterSeconds: ${RECOVERY_STALE_AFTER_SECONDS:-120}
+  maxAttempts: ${RECOVERY_MAX_ATTEMPTS:-5}
+
 retry:
   maxRetries: 6
   baseDelayMs: 500
@@ -38,11 +52,18 @@ mockEndpoint:
   rateLimitProbability: 0.3
   baseLatencyMs: 150
 
-# Prod always persists to disk (a mounted volume) so batches survive restarts/crashes.
+# Prod always persists durably so batches survive restarts/crashes. Default is
+# STORE_TYPE=postgres against the SAME shared Postgres instance local/preprod use (see
+# .env.example / README "One shared Postgres instance"), since prod runs multiple instances
+# (see .do/app.yaml instance_count/autoscaling) that all need to see the same batch state and be
+# able to pick up work left unfinished by a crashed sibling. DATABASE_URL is injected by App
+# Platform as ${db.DATABASE_URL} when a database component is attached; set it manually (or
+# point at a self-hosted Postgres on the droplet) for other deployment styles.
 store:
-  type: ${STORE_TYPE:-sqlite}
+  type: ${STORE_TYPE:-postgres}
   directory: ${STORE_DIRECTORY:-/data/prompt-batch-service/batches}
-  path: ${STORE_SQLITE_PATH:-/data/prompt-batch-service/batches.db}
+  databaseUrl: ${DATABASE_URL:-}
+  maxPoolSize: ${STORE_MAX_POOL_SIZE:-10}
 
 swagger:
   resourcePackage: com.example.promptbatch.api

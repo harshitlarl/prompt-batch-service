@@ -1,0 +1,32 @@
+##
+# Overlay for running multiple prompt-batch-service replicas locally, all mounted to the SAME
+# shared Postgres instance as everywhere else (see .env.example), fronted by a load balancer - a
+# local approximation of DigitalOcean App Platform's instance_count/autoscaling (see
+# .do/app.yaml).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml \
+#     up --build --scale prompt-batch-service=3
+#
+# Try it: submit a batch, then `docker kill` one of the app containers mid-batch. GET
+# /batches/{id} keeps working (state lives in the shared Postgres instance, not that container),
+# and whichever container comes back up finishes the batch's unfinished prompts on startup.
+##
+services:
+  prompt-batch-service:
+    # Fixed host ports can't be shared across replicas, so drop the direct publish and let nginx
+    # be the single entrypoint instead.
+    ports: []
+    expose:
+      - "8080"
+      - "8081"
+
+  lb:
+    image: nginx:1.27-alpine
+    container_name: prompt-batch-lb
+    depends_on:
+      - prompt-batch-service
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:8080"

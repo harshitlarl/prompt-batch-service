@@ -28,14 +28,28 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
     private static final Logger LOG = LoggerFactory.getLogger(ThreadPoolTaskExecutor.class);
 
     private final ThreadPoolExecutor executor;
+    private final String threadNamePrefix;
 
     public ThreadPoolTaskExecutor(WorkerPoolConfig config) {
+        this(config, "prompt-worker");
+    }
+
+    /**
+     * @param threadNamePrefix distinguishes this pool's threads in thread dumps/logs from any
+     *     other {@code ThreadPoolTaskExecutor} in the same process - e.g. {@code "prompt-worker"}
+     *     for the primary pool handling fresh requests vs {@code "retry-worker"} for the small
+     *     pool dedicated to re-running stuck/crashed/failed work (see
+     *     {@code StaleTaskRecoveryService}), so it's obvious from a thread name alone which
+     *     pool picked up a given task.
+     */
+    public ThreadPoolTaskExecutor(WorkerPoolConfig config, String threadNamePrefix) {
+        this.threadNamePrefix = threadNamePrefix;
         ThreadFactory factory = new ThreadFactory() {
             private final AtomicInteger n = new AtomicInteger();
 
             @Override
             public Thread newThread(Runnable r) {
-                Thread t = new Thread(r, "prompt-worker-" + n.incrementAndGet());
+                Thread t = new Thread(r, threadNamePrefix + "-" + n.incrementAndGet());
                 t.setDaemon(false);
                 return t;
             }
@@ -65,17 +79,17 @@ public class ThreadPoolTaskExecutor implements TaskExecutor {
 
     @Override
     public void start() {
-        LOG.info("Worker pool started: {} threads", executor.getCorePoolSize());
+        LOG.info("Worker pool '{}' started: {} threads", threadNamePrefix, executor.getCorePoolSize());
     }
 
     @Override
     public void stop() throws InterruptedException {
-        LOG.info("Shutting down worker pool...");
+        LOG.info("Shutting down worker pool '{}'...", threadNamePrefix);
         executor.shutdown();
         if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
-            LOG.warn("Pool did not drain in time; forcing shutdown");
+            LOG.warn("Pool '{}' did not drain in time; forcing shutdown", threadNamePrefix);
             executor.shutdownNow();
         }
-        LOG.info("Worker pool stopped");
+        LOG.info("Worker pool '{}' stopped", threadNamePrefix);
     }
 }

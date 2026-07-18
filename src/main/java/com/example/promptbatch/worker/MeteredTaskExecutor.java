@@ -31,11 +31,21 @@ public class MeteredTaskExecutor implements TaskExecutor {
     private final Meter failed;
 
     public MeteredTaskExecutor(TaskExecutor delegate, MetricRegistry metrics) {
+        this(delegate, metrics, "primary");
+    }
+
+    /**
+     * @param poolName distinguishes this pool's metrics from any other {@code TaskExecutor} in
+     *     the same registry - e.g. {@code "primary"} for fresh-request processing vs
+     *     {@code "retry"} for the dedicated stuck/crashed-task recovery pool. Without this, two
+     *     pools in the same process would silently share (and stomp on) the same metric names.
+     */
+    public MeteredTaskExecutor(TaskExecutor delegate, MetricRegistry metrics, String poolName) {
         this.delegate = delegate;
-        this.submitted = metrics.counter(MetricRegistry.name(TaskExecutor.class, "submitted"));
-        this.duration = metrics.timer(MetricRegistry.name(TaskExecutor.class, "duration"));
-        this.completed = metrics.meter(MetricRegistry.name(TaskExecutor.class, "completed"));
-        this.failed = metrics.meter(MetricRegistry.name(TaskExecutor.class, "failed"));
+        this.submitted = metrics.counter(MetricRegistry.name(TaskExecutor.class, poolName, "submitted"));
+        this.duration = metrics.timer(MetricRegistry.name(TaskExecutor.class, poolName, "duration"));
+        this.completed = metrics.meter(MetricRegistry.name(TaskExecutor.class, poolName, "completed"));
+        this.failed = metrics.meter(MetricRegistry.name(TaskExecutor.class, poolName, "failed"));
     }
 
     @Override

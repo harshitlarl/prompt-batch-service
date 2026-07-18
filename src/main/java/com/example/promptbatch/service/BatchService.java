@@ -77,11 +77,20 @@ public class BatchService {
         Batch batch = new Batch(batchId, prompts.size());
         batch.status(BatchStatus.PROCESSING);
         repository.save(batch);
+        // No-op for stores that can't recover across a restart; for a shared/durable store
+        // (Postgres) this is what lets a *different* container resume the batch if the one that
+        // enqueued it dies mid-processing (see PromptBatchApplication's startup recovery pass).
+        repository.savePrompts(batchId, prompts);
 
         MDC.put("batchId", batchId);
         try {
             LOG.info("Batch {} received with {} prompts", batchId, prompts.size());
             for (Prompt prompt : prompts) {
+                // No-op for stores that don't track attempts; for the durable store this marks
+                // the prompt as claimed *now*, so the background stale-task sweep won't mistake
+                // a prompt that's simply still queued/in-flight normally for one lost to a
+                // crashed worker until a full staleAfter window has passed with no result.
+                repository.recordAttempt(batchId, prompt.id());
                 taskExecutor.submit(new PromptTask(batch, prompt, inferenceClient, aggregator));
             }
             LOG.info("Batch {} enqueued to worker pool", batchId);

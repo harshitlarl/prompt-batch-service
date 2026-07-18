@@ -8,3 +8,6 @@ dependency-reduced-pom.xml
 data/*.db
 data/*.db-shm
 data/*.db-wal
+
+# Holds the real shared DATABASE_URL (see .env.example) - never commit real DB credentials.
+.env

@@ -32,6 +32,24 @@ workerPool:
   size: ${WORKER_POOL_SIZE:-8}
   queueCapacity: ${WORKER_POOL_QUEUE_CAPACITY:-10000}
 
+# Small, separate pool that only ever runs prompts re-submitted after being lost to a
+# crashed/hung worker (see `recovery:` below + StaleTaskRecoveryService) - kept apart from
+# `workerPool` so retries can never starve normal request processing.
+retryWorkerPool:
+  size: ${RETRY_WORKER_POOL_SIZE:-2}
+  queueCapacity: ${RETRY_WORKER_POOL_QUEUE_CAPACITY:-1000}
+
+# Background sweep (postgres store only) that continuously looks for prompts with no result
+# that haven't been (re-)attempted in `staleAfterSeconds` - i.e. work lost to a crashed or hung
+# worker - and resubmits them to retryWorkerPool. After `maxAttempts` with still no result, the
+# prompt is marked permanently failed instead of retried again, so a batch never gets stuck
+# forever behind one broken prompt.
+recovery:
+  enabled: ${RECOVERY_ENABLED:-true}
+  intervalSeconds: ${RECOVERY_INTERVAL_SECONDS:-20}
+  staleAfterSeconds: ${RECOVERY_STALE_AFTER_SECONDS:-60}
+  maxAttempts: ${RECOVERY_MAX_ATTEMPTS:-5}
+
 retry:
   maxRetries: 4
   baseDelayMs: 500
@@ -42,10 +60,16 @@ mockEndpoint:
   rateLimitProbability: 0.3
   baseLatencyMs: 150
 
+# Same shared Postgres instance as preprod/prod by default (see .env.example /
+# README "One shared Postgres instance") - so a local run sees the exact same batch/prompt
+# state as everywhere else, no separate local database needed. Set STORE_TYPE=json-file +
+# DATABASE_URL="" to fall back to a throwaway local file store instead, if you ever need to work
+# fully offline from the shared DB.
 store:
-  type: ${STORE_TYPE:-sqlite}
+  type: ${STORE_TYPE:-postgres}
   directory: ${STORE_DIRECTORY:-./data/batches}
-  path: ${STORE_SQLITE_PATH:-./data/batches.db}
+  databaseUrl: ${DATABASE_URL:-}
+  maxPoolSize: ${STORE_MAX_POOL_SIZE:-10}
 
 swagger:
   resourcePackage: com.example.promptbatch.api

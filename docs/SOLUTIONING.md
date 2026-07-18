@@ -440,7 +440,7 @@ promptBatch:
     rateLimitProbability: 0.3   # how often the mock returns 429 (for demos/tests)
     baseLatencyMs: 150
   store:
-    type: sqlite               # sqlite | json-file | in-memory
+    type: postgres             # postgres | json-file | in-memory
 ```
 
 ### 4.10 Failure modes & how we handle them

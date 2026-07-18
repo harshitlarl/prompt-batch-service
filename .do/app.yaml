@@ -1,0 +1,90 @@
+##
+# DigitalOcean App Platform spec for prompt-batch-service.
+#
+# What this gives you (mapped to what you asked for):
+#   - Scalability: `instance_count` + `autoscaling` run multiple containers behind one
+#     App Platform load balancer.
+#   - "If a container dies, retry": App Platform restarts any instance that fails
+#     `health_check` automatically, and its own scheduler retries deploys/replacements on
+#     failure - you don't manage this yourself.
+#   - "Whatever failed can also be retried": because every instance points at the SAME
+#     Postgres database (`databases:` below, bound as ${db.DATABASE_URL}), batch/prompt state
+#     is shared, not stuck in one crashed container's memory. Any instance's startup routine
+#     (PromptBatchApplication#recoverInFlightBatches) finds prompts left unfinished by a killed
+#     container and resubmits just those - not the whole batch.
+#
+# Before deploying, edit the two placeholders below:
+#   1. `github.repo` / `branch` (or swap for an `image:` block if you deploy from DOCR instead)
+#   2. `databases[0].cluster_name` - the name of your EXISTING DigitalOcean Managed Postgres
+#      cluster (`doctl databases list` to find it). This attaches to that existing instance;
+#      it does NOT create a new one.
+#
+# Deploy/update with:
+#   doctl apps create --spec .do/app.yaml         # first time
+#   doctl apps update <app-id> --spec .do/app.yaml # subsequent changes
+##
+name: prompt-batch-service
+region: nyc
+
+services:
+  - name: prompt-batch-service
+    dockerfile_path: Dockerfile
+    source_dir: /
+
+    github:
+      repo: harshitlarl/prompt-batch-service
+      branch: main
+      deploy_on_push: true
+
+    # Horizontal scaling: N containers behind App Platform's load balancer, all stateless
+    # (all batch/progress state lives in Postgres), so any of them can serve any request.
+    instance_count: 2
+    instance_size_slug: apps-s-1vcpu-1gb
+    autoscaling:
+      min_instance_count: 2
+      max_instance_count: 5
+      metrics:
+        cpu:
+          percent: 70
+
+    http_port: 8080
+
+    # App Platform polls this and restarts/replaces any instance that fails it - the managed
+    # equivalent of Docker's `restart: unless-stopped` used in docker-compose.yml locally.
+    health_check:
+      http_path: /healthcheck
+      port: 8081
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 5
+      failure_threshold: 3
+      success_threshold: 1
+
+    envs:
+      - key: APP_ENV
+        value: "prod"
+        scope: RUN_TIME
+      - key: STORE_TYPE
+        value: "postgres"
+        scope: RUN_TIME
+      # Bound automatically from the attached database below - DO fills this in with the real
+      # connection string (host/port/user/password/sslmode) at deploy time.
+      - key: DATABASE_URL
+        value: ${db.DATABASE_URL}
+        scope: RUN_TIME
+        type: SECRET
+      - key: WORKER_POOL_SIZE
+        value: "32"
+        scope: RUN_TIME
+      - key: STORE_MAX_POOL_SIZE
+        value: "10"
+        scope: RUN_TIME
+
+# Attaches the EXISTING DigitalOcean Managed Postgres Database `prompt-batch-db` (created via
+# `doctl databases create`, not by this spec) so every service instance shares it.
+databases:
+  - name: db
+    engine: PG
+    production: true
+    cluster_name: prompt-batch-db
+    db_name: promptbatch

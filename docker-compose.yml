@@ -1,3 +1,12 @@
+##
+# Connects directly to the ONE shared Postgres instance used by every environment (local,
+# preprod/stage, prod) - see .env.example. There is no separate local-only database container:
+# `docker compose up` mounts the same DATABASE_URL your preprod/prod deploys use, so local runs
+# see (and write into) exactly the same batch/prompt state as everywhere else.
+#
+#   cp .env.example .env   # fill in the real DATABASE_URL once
+#   docker compose up --build
+##
 services:
   prompt-batch-service:
     build:
@@ -9,7 +18,20 @@ services:
       # Selects config/config-${APP_ENV}.yml (local | stage | prod). Override with
       # `APP_ENV=stage docker compose up --build` or in a .env file.
       APP_ENV: ${APP_ENV:-local}
+      # postgres by default everywhere (local/preprod/prod) so all three run against the same
+      # database instance - see .env.example / README "One shared Postgres instance" section.
+      STORE_TYPE: ${STORE_TYPE:-postgres}
+      # No local default here on purpose: this must be the same connection string used by
+      # preprod/prod (from .env, or your shell env, or DO App Platform's ${db.DATABASE_URL}) so
+      # every environment is mounted to the same instance. PostgresBatchStore fails fast with a
+      # clear error at startup if this is left blank.
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env - see .env.example. All environments (local/preprod/prod) must point at the same Postgres instance.}
     ports:
       - "8080:8080"   # application port (REST API)
       - "8081:8081"   # admin port (health checks, metrics)
+    # Restarts a crashed/OOM-killed container automatically. In production this same job is done
+    # by DigitalOcean App Platform's health-check-driven restarts (see .do/app.yaml); this is the
+    # local-Docker equivalent. Because batch/prompt state lives in the shared Postgres instance,
+    # not this container's memory, a restart resumes in-flight batches instead of losing them
+    # (see PostgresBatchStore#pendingPrompts / PromptBatchApplication#recoverInFlightBatches).
     restart: unless-stopped

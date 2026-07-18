@@ -45,7 +45,7 @@ public class Batch {
     }
 
     /**
-     * Rehydrates a {@code Batch} from persisted state (e.g. {@code SqliteBatchStore#find}) after
+     * Rehydrates a {@code Batch} from persisted state (e.g. {@code PostgresBatchStore#find}) after
      * a process restart. Unlike {@link #recordResult}, this does not re-derive the completion
      * transition - the persisted {@code status}/{@code finishedAt} are trusted as-is since they
      * were themselves written by a prior, already-correct {@code recordResult}/finalize call.
