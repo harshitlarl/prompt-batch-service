@@ -63,9 +63,10 @@ curl request/response pairs for every endpoint, plus every edge case (validation
 | Result aggregation (thread-safe counters, exactly-once completion) | `model/Batch`, `service/CompletionAggregator`                       |
 | Result persistence (in-memory, JSON file, or shared Postgres) | `store/InMemoryResultStore`, `store/JsonFileResultStore`, `store/postgres` |
 | Shared Postgres store for multi-instance/horizontal scaling + startup crash-recovery of in-flight batches | `store/postgres/PostgresBatchStore`, `PromptBatchApplication#recoverInFlightBatches` |
+| Continuous background sweep for prompts lost to a crashed/hung worker (no restart needed), retried on a small dedicated pool with a bounded attempt count | `worker/StaleTaskRecoveryService`, `config/RecoveryConfig`, `retryWorkerPool` |
 | Live progress endpoint                                             | `GET /batches/{id}`                                                 |
 | Final results endpoint                                             | `GET /batches/{id}/results`                                         |
-| Health checks (liveness, worker pool saturation, DB connectivity)  | `health/PingHealthCheck`, `health/WorkerPoolHealthCheck`, `health/DatabaseHealthCheck` |
+| Health checks (liveness, worker pool saturation, DB connectivity, recovery sweep status)  | `health/PingHealthCheck`, `health/WorkerPoolHealthCheck`, `health/DatabaseHealthCheck`, `health/StaleTaskRecoveryHealthCheck` |
 | Metrics (inference latency/outcomes, worker throughput/backlog, batch/HTTP counters), pushed periodically to logs/JMX | `client/MeteredInferenceClient`, `worker/MeteredTaskExecutor`, `config/config-*.yml` `metrics:` block |
 | Unit tests for all of the above                                    | `src/test/java/...` (60 tests)                                      |
 
@@ -256,6 +257,19 @@ work end to end:
   that on startup any instance can find prompts a crashed/killed container never finished
   (`BatchRepository#pendingPrompts`) and resubmit just those (`PromptBatchApplication
   #recoverInFlightBatches`) — a killed container doesn't lose or restart the whole batch.
+- **continuously sweeps for stuck/lost work while every instance stays up** — not just at
+  startup. `StaleTaskRecoveryService` runs on a timer (`recovery.intervalSeconds`) and asks the
+  store for prompts with no result that haven't been (re-)attempted within
+  `recovery.staleAfterSeconds` (`BatchRepository#staleUnfinishedPrompts`), independent of whether
+  any instance has restarted. This is what catches a worker that crashed or hung mid-prompt
+  without the whole container going down.
+- **retries run on their own small, dedicated pool** (`retryWorkerPool`, default 2 threads),
+  separate from `workerPool` which only ever handles freshly-submitted prompts. A burst of
+  retries after an outage can never compete with or slow down normal request processing, because
+  the two pools have independent bounded concurrency.
+- **gives up after `recovery.maxAttempts`** instead of retrying forever — a prompt that's
+  permanently broken (e.g. always throws) gets recorded as a terminal failure so its batch can
+  still complete rather than getting stuck behind it indefinitely.
 
 `store.databaseUrl` (env var `DATABASE_URL`) accepts either a DigitalOcean-style connection
 string (`postgresql://user:pass@host:port/db?sslmode=require` — exactly what a DO Managed
@@ -315,11 +329,19 @@ else in the app needs to change, since the seam is the same `store.databaseUrl` 
 
 ### Known limitations
 
-- Recovery runs on **startup**, and only for the shared Postgres store — a crashed container's
-  in-flight prompts resume once *some* instance restarts and runs its startup scan, not the
-  instant the crash happens. `json-file`/`in-memory` don't implement
-  `savePrompts`/`pendingPrompts` (they default to no-ops), since a single-file/in-memory store
-  already lives and dies with its one container and isn't meant to be shared across instances.
+- Both recovery paths (startup scan and the continuous `StaleTaskRecoveryService` sweep) only
+  work for the shared Postgres store. `json-file`/`in-memory` don't implement
+  `savePrompts`/`pendingPrompts`/`recordAttempt`/`staleUnfinishedPrompts` (they default to
+  no-ops), since a single-file/in-memory store already lives and dies with its one container and
+  isn't meant to be shared across instances.
+- The continuous sweep's "is this stuck?" signal is purely time-based
+  (`last_attempted_at` older than `staleAfterSeconds` with still no result) — there's no true
+  per-worker heartbeat/lease. A prompt that's just genuinely slow (slower than
+  `staleAfterSeconds`) will get resubmitted to the retry pool even though its original attempt
+  might still finish later; whichever result lands first wins (`prompt_results` upsert is
+  idempotent), so this trades a little duplicate work for not needing a heartbeat protocol.
+  Tune `staleAfterSeconds` comfortably above your slowest expected prompt latency to minimize
+  that overlap.
 - Pointing local/preprod/prod at **one** database instance (rather than one per environment) is
   simple and matches the ask here, but it means local dev runs and preprod tests write into the
   same `batches`/`prompt_results`/`batch_prompts` tables prod does — there's no isolation between

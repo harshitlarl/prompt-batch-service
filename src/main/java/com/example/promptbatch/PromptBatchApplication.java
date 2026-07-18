@@ -25,6 +25,7 @@ import com.example.promptbatch.model.Prompt;
 import com.example.promptbatch.repository.BatchRepository;
 import com.example.promptbatch.repository.InMemoryBatchRepository;
 import com.example.promptbatch.resources.PingResource;
+import com.example.promptbatch.resources.RootRedirectResource;
 import com.example.promptbatch.service.Aggregator;
 import com.example.promptbatch.service.BatchService;
 import com.example.promptbatch.service.CompletionAggregator;
@@ -210,6 +211,7 @@ public class PromptBatchApplication extends Application<PromptBatchConfiguration
 
         // --- edge: REST + health + error mapping ---
         env.jersey().register(new PingResource());
+        env.jersey().register(new RootRedirectResource());
         env.jersey().register(new BatchResource(batchService, ingestRegistry));
         env.jersey().register(new BatchNotFoundExceptionMapper());
         env.jersey().register(new BadInputExceptionMapper());
