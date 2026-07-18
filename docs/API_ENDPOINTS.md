@@ -23,11 +23,56 @@ access when running locally / via `docker compose` / SSH-tunneled to a droplet.
 |---|---|---|
 | `GET` | `/` | Redirects (303) to `/ui` |
 | `GET` | `/ping` | Liveness check → `{"status":"ok","message":"pong"}` |
-| `POST` | `/batches` | Submit a batch. Body: `{"prompts": ["...", "..."]}` → `202 Accepted` with `{"batchId", "total"}` |
-| `POST` | `/batches/upload` | Submit a batch via raw file body. `Content-Type: text/plain` = one prompt per line, `application/json` = JSON array of strings |
-| `GET` | `/batches` | List every batch (id, status, progress, counts, timestamps), most recent first |
-| `GET` | `/batches/{id}` | One batch's live progress: `status`, `total`, `completed`, `succeeded`, `failed`, `percentComplete` |
-| `GET` | `/batches/{id}/results` | Per-prompt results (output/failure reason/attempts). `409` if the batch hasn't finished yet |
+| `POST` | `/batches` | Submit a batch (JSON). Body: `{"prompts": ["...", "..."]}` → `202 Accepted` with `{"batchId", "total"}`. `422` on validation error (e.g. empty list) |
+| `POST` | `/batches/upload` | Submit a batch via raw file body. `Content-Type: text/plain` = newline-delimited prompts, `application/json` = JSON array of strings. `415` on unsupported content type |
+| `GET` | `/batches` | List every batch (progress summary for each), most recently submitted first |
+| `GET` | `/batches/{id}` | One batch's live progress. `404` if `batchId` is unknown |
+| `GET` | `/batches/{id}/results` | Per-prompt results, once `COMPLETED`. `409` (with the current progress snapshot) if still running, `404` if unknown |
+
+### Request / response shapes
+
+`POST /batches` request:
+
+```json
+{ "prompts": ["prompt one", "prompt two"] }
+```
+
+`POST /batches` / `POST /batches/upload` response (`202`):
+
+```json
+{ "batchId": "b3f1...", "total": 2 }
+```
+
+`GET /batches` and `GET /batches/{id}` response — one `BatchProgressResponse` per batch:
+
+```json
+{
+  "batchId": "b3f1...",
+  "status": "PROCESSING",
+  "total": 2,
+  "completed": 1,
+  "succeeded": 1,
+  "failed": 0,
+  "percentComplete": 50.0,
+  "createdAt": "2026-07-18T06:00:00Z",
+  "finishedAt": null
+}
+```
+
+`status` is one of `QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED` (monotonic — no back-transitions).
+
+`GET /batches/{id}/results` response (`200`, once `COMPLETED`):
+
+```json
+{
+  "batchId": "b3f1...",
+  "status": "COMPLETED",
+  "results": [
+    { "promptId": "p1", "outcome": "SUCCESS", "output": "...", "failureReason": null, "attempts": 1 },
+    { "promptId": "p2", "outcome": "FAILED", "output": null, "failureReason": "...", "attempts": 3 }
+  ]
+}
+```
 
 ## Dashboard (UI) (port 8080)
 
@@ -56,8 +101,8 @@ default — reach it via `docker compose` locally, or by exposing/tunneling port
 | Path | Description |
 |---|---|
 | `/` (admin root) | Admin index — links to everything below |
-| `/healthcheck` | JSON health of every registered check: `ping`, `deadlocks`, `workerPool`, `retryWorkerPool`, and (when `STORE_TYPE=postgres`) `database` + `staleTaskRecovery` (the background recovery sweep's liveness) |
-| `/metrics` | Full Dropwizard/JVM metrics dump (JSON): request timers, worker pool gauges, GC, memory, threads, etc. |
+| `/healthcheck` | JSON health of every registered check: `ping`, `workerPool`, `retryWorkerPool`, and — only when `store.type=postgres` — `database` and (if `recovery.enabled`) `staleTaskRecovery` (the background crash-recovery sweep's liveness) |
+| `/metrics` | Full Dropwizard/JVM metrics dump (JSON): request timers, worker pool gauges (`TaskExecutor.primary/retry.activeCount/queueSize`), `BatchRepository.count`, GC, memory, threads, etc. |
 | `/metrics/healthcheck` | Metrics-formatted view of health checks |
 | `/threads` | Live JVM thread dump |
 | `/ping` | Admin connector's own liveness check (separate from the app-port `/ping` above) |
@@ -72,7 +117,6 @@ Controlled by `store.type` in `config/config-<env>.yml` (`STORE_TYPE` env var ov
 
 | `STORE_TYPE` | Behavior |
 |---|---|
-| `postgres` | Shared, durable — every instance/container reads/writes the same Postgres database. Survives restarts and crashed containers (in-flight batches are recovered on startup). **Used in production/DO deployment.** |
-| `sqlite` | Durable, single-file, local to one container. Fine for a single local instance; not shared across replicas. |
-| `json-file` | One JSON file per finalized batch; in-memory while running. |
+| `postgres` (default) | Shared, durable — every instance/container reads/writes the same Postgres database (tables `batches`, `prompt_results`, `batch_prompts`). Survives restarts and crashed containers: in-flight batches are recovered on startup, and a background sweep continuously resubmits prompts lost to a crashed/hung worker to a dedicated retry pool (giving up after `recovery.maxAttempts`). **Used in production/DO deployment.** See [`SOLUTIONING.md` §4.7](SOLUTIONING.md#47-data-model) for the schema. |
+| `json-file` | One JSON file per finalized batch; in-memory batch state while running. Single process only — no cross-instance sharing or recovery. |
 | `in-memory` | Fastest, zero setup; all state lost on restart. Good for quick local testing only. |
