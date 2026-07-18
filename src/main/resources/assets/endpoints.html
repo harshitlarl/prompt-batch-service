@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Endpoints · Prompt Batch Service</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Prompt Batch Service</div>
+    <nav>
+      <a href="index.html">Submit</a>
+      <a href="status.html">Task Status</a>
+      <a href="endpoints.html" class="active">Endpoints</a>
+      <a href="/swagger" target="_blank" rel="noopener">API Docs</a>
+    </nav>
+  </div>
+
+  <main>
+    <div class="hero">
+      <h1>Every Endpoint, One Page</h1>
+      <p>App API, dashboard pages, and admin/ops endpoints — what they do and whether they're reachable from here.</p>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:4px;">
+        <h2 style="margin:0;font-size:16px;">App API <span class="hint">· port 8080 · public</span></h2>
+      </div>
+      <table class="endpoint-table">
+        <tbody>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/" target="_blank" rel="noopener"><code>/</code></a></td>
+            <td>Redirects (303) to <code>/ui</code></td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/ping" target="_blank" rel="noopener"><code>/ping</code></a></td>
+            <td>Liveness check</td>
+          </tr>
+          <tr>
+            <td><span class="method POST">POST</span></td>
+            <td><code>/batches</code></td>
+            <td>Submit a batch — body <code>{"prompts": ["..."]}</code> → try it on <a class="link" href="index.html">Submit</a></td>
+          </tr>
+          <tr>
+            <td><span class="method POST">POST</span></td>
+            <td><code>/batches/upload</code></td>
+            <td>Submit a batch via file upload (<code>.txt</code> one-per-line or <code>.json</code> array)</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/batches" target="_blank" rel="noopener"><code>/batches</code></a></td>
+            <td>List every batch, most recent first → see it live on <a class="link" href="status.html">Task Status</a></td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><code>/batches/{id}</code></td>
+            <td>One batch's live progress</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><code>/batches/{id}/results</code></td>
+            <td>Per-prompt results (<code>409</code> until finished)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:4px;">
+        <h2 style="margin:0;font-size:16px;">Dashboard &amp; API Docs <span class="hint">· port 8080 · public</span></h2>
+      </div>
+      <table class="endpoint-table">
+        <tbody>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="index.html"><code>/ui</code></a></td>
+            <td>Submit page — paste/upload prompts, submit a batch, watch it live</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="status.html"><code>/ui/status.html</code></a></td>
+            <td>Task Status page — all batches, live-polling progress table</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/swagger" target="_blank" rel="noopener"><code>/swagger</code></a></td>
+            <td>Interactive Swagger UI</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/openapi.json" target="_blank" rel="noopener"><code>/openapi.json</code></a></td>
+            <td>OpenAPI 3 spec (JSON)</td>
+          </tr>
+          <tr>
+            <td><span class="method GET">GET</span></td>
+            <td><a class="ep-link" href="/openapi.yaml" target="_blank" rel="noopener"><code>/openapi.yaml</code></a></td>
+            <td>OpenAPI 3 spec (YAML)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="row between" style="margin-bottom:4px;">
+        <h2 style="margin:0;font-size:16px;">Admin / Ops <span class="hint">· port 8081 · internal only<span id="admin-hint-extra"></span></span></h2>
+      </div>
+      <div class="banner show" id="admin-banner" style="margin-top:0;margin-bottom:14px;"></div>
+      <table class="endpoint-table">
+        <tbody>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/healthcheck"><code>/healthcheck</code></a></td><td>JSON health of every registered check (ping, deadlocks, worker pools, database)</td></tr>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/metrics"><code>/metrics</code></a></td><td>Full Dropwizard/JVM metrics dump</td></tr>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/threads"><code>/threads</code></a></td><td>Live JVM thread dump</td></tr>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/ping"><code>/ping</code></a></td><td>Admin connector's own liveness check</td></tr>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/pprof/profile"><code>/pprof/profile</code></a></td><td>On-demand CPU profile capture</td></tr>
+          <tr><td><span class="method GET">GET</span></td><td><a class="ep-link admin-link" data-path="/pprof/contention"><code>/pprof/contention</code></a></td><td>On-demand lock-contention profile capture</td></tr>
+          <tr><td><span class="method POST">POST</span></td><td><code>/tasks/log-level</code></td><td>Change a logger's level at runtime</td></tr>
+          <tr><td><span class="method POST">POST</span></td><td><code>/tasks/gc</code></td><td>Trigger a JVM garbage collection</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer-note">Full write-up with request/response shapes: <code>docs/API_ENDPOINTS.md</code> in the repo.</div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="endpoints.js"></script>
+</body>
+</html>

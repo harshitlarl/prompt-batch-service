@@ -661,3 +661,66 @@ a.link:hover {
 .copy-id {
   cursor: pointer;
 }
+
+.endpoint-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.endpoint-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.endpoint-table tr {
+  animation: fadeInUp 0.35s ease both;
+}
+
+.endpoint-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.endpoint-table code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12.5px;
+}
+
+.endpoint-table td:first-child {
+  width: 70px;
+}
+
+.endpoint-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+a.ep-link {
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a.ep-link:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+.method {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.method.GET {
+  background: rgba(53, 201, 143, 0.15);
+  color: var(--success);
+}
+
+.method.POST {
+  background: rgba(91, 140, 255, 0.15);
+  color: var(--accent-2);
+}
